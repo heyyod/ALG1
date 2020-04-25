@@ -1,5 +1,9 @@
 import java.io.FileReader;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.lang.Math;
@@ -10,33 +14,54 @@ import java.lang.Math;
 // email:       kdamaskin@csd.auth.gr
 
 // Code Used:
-// Quick Hull: https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
+// Quick Hull:  https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
+// Graph:       https://www.geeksforgeeks.org/implementing-generic-graph-in-java/ 
 
 class node {
     public node(String line) {
-        if(line == "") {
-            return;
-        }
+        if(line == "") return;
 
         String[] coord = line.split(" ");
         x = Integer.parseInt(coord[0]);
         y = Integer.parseInt(coord[1]);
         dist = 0;
-        canVisit = false;
     }
+
     int x;
     int y;
     int dist; // shortest distance from start
-    boolean canVisit;
 
     void setPos(String line) {
-        if(line == "") {
-            return;
-        }
+        if(line == "") return;
 
-        String[] coord = line.split(" ");
-        x = Integer.parseInt(coord[0]);
-        y = Integer.parseInt(coord[1]);
+        String[] coordinate = line.split(" ");
+        x = Integer.parseInt(coordinate[0]);
+        y = Integer.parseInt(coordinate[1]);
+    }
+}
+
+class Graph {
+    Map<node, List<node>> graph = new HashMap<>();
+
+    void addAndConnect(node a, node b) {
+        if(!graph.containsKey(a))
+            graph.put(a, new LinkedList<node>());
+
+        if(!graph.containsKey(b))
+            graph.put(b, new LinkedList<node>());
+
+        graph.get(a).add(b);
+        graph.get(b).add(a);
+    }
+    
+    void print() {
+        for( node n : graph.keySet() ) {
+            System.out.printf("%d, %d connects to: ", n.x, n.y);
+            for( node child : graph.get(n) ) {
+                System.out.printf("%d, %d | ", child.x, child.y);
+            }
+            System.out.printf("\n");
+        }
     }
 }
 
@@ -55,7 +80,7 @@ public class Mines {
         return Math.abs(d);
     }
 
-    static void quickHull(Set<node> ch, node[] mines, int l, int r, boolean checkUpperSide) {
+    static void quickHull(Graph graph, node[] mines, int l, int r, boolean checkUpperSide) {
         int maxDistIndex = -1;
         int maxDist = 0;
 
@@ -68,17 +93,15 @@ public class Mines {
         }
 
         if(maxDistIndex == -1){
-            // no new point found to add
-            mines[l].canVisit = true;
-            mines[r].canVisit = true;
-            ch.add(mines[l]);
-            ch.add(mines[r]);
+            // no new point found to add in the hull
+            // add the two nodes to the graph
+            graph.addAndConnect(mines[l], mines[r]);
             return;
         }
 
         // Apply quickHull to the two new lines
-        quickHull(ch, mines, l, maxDistIndex, checkUpperSide);
-        quickHull(ch, mines, maxDistIndex, r, checkUpperSide);
+        quickHull(graph, mines, l, maxDistIndex, checkUpperSide);
+        quickHull(graph, mines, maxDistIndex, r, checkUpperSide);
     }
 
     public static void main(String[] args) {
@@ -97,32 +120,37 @@ public class Mines {
         // Read data
         node start = new node(fileScanner.nextLine());
         node goal = new node(fileScanner.nextLine());
-        Set<node> mines = new HashSet<node>();
+        
+        Set<node> nodesSet = new HashSet<node>();
+        nodesSet.add(start);
+        nodesSet.add(goal);
         while (fileScanner.hasNextLine()) {
             node n = new node(fileScanner.nextLine());
-            mines.add(n);
+            nodesSet.add(n);
         }
         fileScanner.close();
 
-        // Find leftmost and rightmost mine
+        // Find leftmost and rightmost node
         int minXindex = 0;
         int maxXindex = 0;
-        node[] minesA = new node[mines.size()];
-        mines.toArray(minesA);
-        for (int i = 0; i < minesA.length; i++) {
-            if (minesA[i].x < minesA[minXindex].x) {
+        node[] nodes = new node[nodesSet.size()];
+        nodesSet.toArray(nodes);
+        for (int i = 0; i < nodes.length; i++) {
+            if (nodes[i].x < nodes[minXindex].x) 
                 minXindex = i;
-            }
-            if (minesA[i].x > minesA[maxXindex].x) {
+            if (nodes[i].x > nodes[maxXindex].x)
                 maxXindex = i;
-            }
         }
+        
+        // We need to find the quickhull of all our points including the
+        // starting and goal point. This is because the greatest side of
+        // a scalene triangle is always less than the sum of the two smaller
+        // sides. So we only need to consider the connection of our start and
+        // goal to the uppest and downest mines ONLY.
+        Graph graph = new Graph(); // add the
+        quickHull(graph, nodes, minXindex, maxXindex, true); // upper hull
+        quickHull(graph, nodes, minXindex, maxXindex, false); // lower hull
 
-        Set<node> convexHull = new HashSet<node>();
-        quickHull(convexHull, minesA, minXindex, maxXindex, true);
-        quickHull(convexHull, minesA, minXindex, maxXindex, false);
-        for(node n : mines) {
-            System.out.printf("%d %d %b\n", n.x, n.y, n.canVisit);
-        }
+        graph.print();
     }
 }
