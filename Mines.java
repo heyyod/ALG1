@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Scanner;
 import java.util.Set;
-
+import java.util.Stack;
 import java.lang.Math;
 
 // Onoma:       Konstantinos
@@ -35,13 +35,13 @@ class node {
         x = Integer.parseInt(coord[0]);
         y = Integer.parseInt(coord[1]);
         dist = Float.POSITIVE_INFINITY;
-        next = null;
+        prev = null;
     }
 
     int x;
     int y;
     float dist; // shortest distance from start
-    node next;
+    node prev;
 
     void setPos(String line) {
         if (line == "")
@@ -98,22 +98,29 @@ class Graph {
                 if (!checkedNodes.contains(neighbour)) {
                     float newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
 
-                    if (newDist < neighbour.dist)
+                    if (newDist < neighbour.dist) {
                         neighbour.dist = newDist;
-
-                    if (minDistNode.next == null || neighbour.dist < minDistNode.next.dist)
-                        minDistNode.next = neighbour;
+                        neighbour.prev = minDistNode;
+                    }
 
                     if (neighbour.x == goal.x && neighbour.y == goal.y) {
                         // Goal point found!
                         System.out.printf("The shortest distance is %f\n", goal.dist);
-                        System.out.printf("The shortest path is:");
-                        node n = start;
-                        while (n.next != null) {
-                            System.out.printf("(%d,%d)-->", n.x, n.y);
-                            n = n.next;
+
+                        Stack<node> path = new Stack<node>();
+                        node n = goal;
+                        while(n != null) {
+                            path.push(n);
+                            n = n.prev;
                         }
-                        System.out.printf("(%d,%d)", n.x, n.y);
+
+                        System.out.printf("The shortest path is:");
+                        while(path.size()>1 ) {
+                            n = path.pop();
+                            System.out.printf("(%d,%d)-->", n.x, n.y);
+                        }
+                        n = path.pop();
+                        System.out.printf("(%d,%d)\n", n.x, n.y);
                         return;
                     }
 
@@ -172,7 +179,7 @@ public class Mines {
             System.out.printf("Opening file: %s\n", file);
         }
         else if(args.length == 0) {
-            System.out.printf("ERROR: No arguments passed. You need to give a file.\n");
+            System.out.printf("ERROR: No arguments found. You need to pass a file.\n");
             return;
         }
         else if(args.length > 1) {
