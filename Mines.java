@@ -1,11 +1,14 @@
 import java.io.FileReader;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Scanner;
 import java.util.Set;
+
 import java.lang.Math;
 
 // Onoma:       Konstantinos
@@ -13,9 +16,14 @@ import java.lang.Math;
 // AEM:         3414
 // email:       kdamaskin@csd.auth.gr
 
-// Code Used:
+// Sources Used:
 // Quick Hull:  https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
 // Graph:       https://www.geeksforgeeks.org/implementing-generic-graph-in-java/ 
+// Dijkstra:    https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-in-java-using-priorityqueue/
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//                       Code
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class node {
     public node(String line) {
@@ -24,12 +32,14 @@ class node {
         String[] coord = line.split(" ");
         x = Integer.parseInt(coord[0]);
         y = Integer.parseInt(coord[1]);
-        dist = 0;
+        dist = Float.POSITIVE_INFINITY;
+        next = null;
     }
 
     int x;
     int y;
-    int dist; // shortest distance from start
+    float dist; // shortest distance from start
+    node next;
 
     void setPos(String line) {
         if(line == "") return;
@@ -38,10 +48,26 @@ class node {
         x = Integer.parseInt(coordinate[0]);
         y = Integer.parseInt(coordinate[1]);
     }
+
+    float distanceFrom(node n) {
+        float result = (float)Math.sqrt((double)((n.x - this.x)*(n.x - this.x) + (n.y - this.y)*(n.y - this.y)));
+        return result;
+    }
+}
+
+class nodeComparator implements Comparator<node> {
+    public int compare(node a, node b) {
+        if(a.dist < b.dist)
+            return -1;
+        else if(a.dist == b.dist)
+            return 0;
+        else
+            return 1;
+    }
 }
 
 class Graph {
-    Map<node, List<node>> graph = new HashMap<>();
+    Map<node, List<node>> graph = new HashMap<node, List<node>>();
 
     void addAndConnect(node a, node b) {
         if(!graph.containsKey(a))
@@ -53,14 +79,44 @@ class Graph {
         graph.get(a).add(b);
         graph.get(b).add(a);
     }
-    
-    void print() {
-        for( node n : graph.keySet() ) {
-            System.out.printf("%d, %d connects to: ", n.x, n.y);
-            for( node child : graph.get(n) ) {
-                System.out.printf("%d, %d | ", child.x, child.y);
+
+    void getMinPath(node start, node goal) {
+        Set<node> checkedNodes = new HashSet<node>();
+        PriorityQueue<node> pq = new PriorityQueue<node>(graph.size(), new nodeComparator());
+
+        start.dist = 0.0f;
+        pq.add(start);
+
+        while(checkedNodes.size() < graph.size()) {
+            node minDistNode = pq.remove();
+            checkedNodes.add(minDistNode);
+
+            for(node neighbour : graph.get(minDistNode)) {
+                if(!checkedNodes.contains(neighbour)) {
+                    float newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
+                   
+                    if(newDist < neighbour.dist)
+                        neighbour.dist = newDist;
+
+                    if(minDistNode.next == null || neighbour.dist < minDistNode.next.dist) 
+                        minDistNode.next = neighbour;
+
+                    if(neighbour.x == goal.x && neighbour.y == goal.y) {
+                        // Goal point found!
+                        System.out.printf("The shortest distance is %f\n", goal.dist);
+                        System.out.printf("The shortest path is:");
+                        node n = start;
+                        while( n.next != null ) {
+                            System.out.printf("(%d,%d)-->", n.x, n.y);
+                            n = n.next;
+                        }
+                        System.out.printf("(%d,%d)", n.x, n.y);
+                        return;
+                    }
+
+                    pq.add(neighbour);
+                }
             }
-            System.out.printf("\n");
         }
     }
 }
@@ -151,6 +207,6 @@ public class Mines {
         quickHull(graph, nodes, minXindex, maxXindex, true); // upper hull
         quickHull(graph, nodes, minXindex, maxXindex, false); // lower hull
 
-        graph.print();
+        graph.getMinPath(start, goal);
     }
 }
