@@ -40,7 +40,7 @@ class node {
 
     int x;
     int y;
-    float dist; // shortest distance from start
+    double dist; // shortest distance from start
     node prev;
 
     void setPos(String line) {
@@ -52,8 +52,9 @@ class node {
         y = Integer.parseInt(coordinate[1]);
     }
 
-    float distanceFrom(node n) {
-        float result = (float) Math.sqrt((double) ((n.x - this.x) * (n.x - this.x) + (n.y - this.y) * (n.y - this.y)));
+    double distanceFrom(node n) {
+        double distSqrd = (n.x - this.x) * (n.x - this.x) + (n.y - this.y) * (n.y - this.y);
+        double result = Math.sqrt(distSqrd);
         return result;
     }
 }
@@ -96,7 +97,7 @@ class Graph {
 
             for (node neighbour : graph.get(minDistNode)) {
                 if (!checkedNodes.contains(neighbour)) {
-                    float newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
+                    double newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
 
                     if (newDist < neighbour.dist) {
                         neighbour.dist = newDist;
@@ -104,23 +105,7 @@ class Graph {
                     }
 
                     if (neighbour.x == goal.x && neighbour.y == goal.y) {
-                        // Goal point found!
-                        System.out.printf("The shortest distance is %f\n", goal.dist);
-
-                        Stack<node> path = new Stack<node>();
-                        node n = goal;
-                        while(n != null) {
-                            path.push(n);
-                            n = n.prev;
-                        }
-
-                        System.out.printf("The shortest path is:");
-                        while(path.size()>1 ) {
-                            n = path.pop();
-                            System.out.printf("(%d,%d)-->", n.x, n.y);
-                        }
-                        n = path.pop();
-                        System.out.printf("(%d,%d)\n", n.x, n.y);
+                        printMinPath(goal);
                         return;
                     }
 
@@ -129,63 +114,71 @@ class Graph {
             }
         }
     }
+
+    void printMinPath(node goal) {
+        System.out.printf("The shortest distance is %.5f\n", goal.dist);
+
+        Stack<node> path = new Stack<node>();
+        node n = goal;
+        while(n != null) {
+            path.push(n);
+            n = n.prev;
+        }
+
+        System.out.printf("The shortest path is:");
+        while(path.size()>1 ) {
+            n = path.pop();
+            System.out.printf("(%d,%d)-->", n.x, n.y);
+        }
+        n = path.pop();
+        System.out.printf("(%d,%d)\n", n.x, n.y);
+        return;
+    }
 }
 
 public class Mines {
 
-    static boolean isAbove(node[] mines, int l, int r, int test) {
-        int result = (mines[test].y - mines[l].y) * (mines[r].x - mines[l].x)
-                - (mines[r].y - mines[l].y) * (mines[test].x - mines[l].x);
+    static boolean isAbove(node l, node r, node test) {
+        int result = (test.y - l.y) * (r.x - l.x) - (r.y - l.y) * (test.x - l.x);
         if (result > 0)
             return true;
         else
             return false;
     }
 
-    static int distance(node[] mines, int l, int r, int test) {
-        int d = (mines[test].y - mines[l].y) * (mines[r].x - mines[l].x)
-                - (mines[r].y - mines[l].y) * (mines[test].x - mines[l].x);
+    static int distance(node l, node r, node test) {
+        int d = (test.y - l.y) * (r.x - l.x) - (r.y - l.y) * (test.x - l.x);
         return Math.abs(d);
     }
 
-    static void quickHull(Graph graph, node[] mines, int l, int r, boolean checkUpperSide) {
-        int maxDistIndex = -1;
+    static void quickHull(Graph graph, Set<node> nodes, node l, node r, boolean checkUpperSide) {
+        node maxDistNode = null;
         int maxDist = 0;
 
-        for (int i = 0; i < mines.length; i++) {
-            int distance = distance(mines, l, r, i);
-            if (isAbove(mines, l, r, i) == checkUpperSide && distance > maxDist) {
-                maxDistIndex = i;
+        for (node n : nodes) {
+            int distance = distance(l, r, n);
+            if (isAbove(l, r, n) == checkUpperSide && distance > maxDist) {
+                maxDistNode = n;
                 maxDist = distance;
             }
         }
 
-        if (maxDistIndex == -1) {
+        if (maxDistNode == null) {
             // no new point found to add in the hull
             // add the two nodes to the graph
-            graph.addAndConnect(mines[l], mines[r]);
+            nodes.remove(l);
+            nodes.remove(r);
+            graph.addAndConnect(l, r);
             return;
         }
 
         // Apply quickHull to the two new lines
-        quickHull(graph, mines, l, maxDistIndex, checkUpperSide);
-        quickHull(graph, mines, maxDistIndex, r, checkUpperSide);
+        quickHull(graph, nodes, l, maxDistNode, checkUpperSide);
+        quickHull(graph, nodes, maxDistNode, r, checkUpperSide);
     }
 
     public static void main(String[] args) {
-        String file = "";
-        if(args.length == 1) {
-            file = args[0];
-            System.out.printf("Opening file: %s\n", file);
-        }
-        else if(args.length == 0) {
-            System.out.printf("ERROR: No arguments found. You need to pass a file.\n");
-            return;
-        }
-        else if(args.length > 1) {
-            System.out.printf("ERROR: Too many argument. Only 1 required for the file.\n");
-            return;
-        }
+        String file = args[0];
 
         // Open File
         FileReader fr;
@@ -201,26 +194,13 @@ public class Mines {
         node start = new node(fileScanner.nextLine());
         node goal = new node(fileScanner.nextLine());
         
-        Set<node> nodesSet = new HashSet<node>();
-        nodesSet.add(start);
-        nodesSet.add(goal);
+        Set<node> nodes = new HashSet<node>();
+        nodes.add(start);
+        nodes.add(goal);
         while (fileScanner.hasNextLine()) {
-            node n = new node(fileScanner.nextLine());
-            nodesSet.add(n);
+            nodes.add(new node(fileScanner.nextLine()));
         }
         fileScanner.close();
-
-        // Find leftmost and rightmost node
-        int minXindex = 0;
-        int maxXindex = 0;
-        node[] nodes = new node[nodesSet.size()];
-        nodesSet.toArray(nodes);
-        for (int i = 0; i < nodes.length; i++) {
-            if (nodes[i].x < nodes[minXindex].x) 
-                minXindex = i;
-            if (nodes[i].x > nodes[maxXindex].x)
-                maxXindex = i;
-        }
         
         // We need to find the quickhull of all our points including the
         // starting and goal point. This is because the greatest side of
@@ -228,8 +208,8 @@ public class Mines {
         // sides. So we only need to consider the connection of our start and
         // goal to the uppest and downest mines ONLY.
         Graph graph = new Graph(); // add the
-        quickHull(graph, nodes, minXindex, maxXindex, true); // upper hull
-        quickHull(graph, nodes, minXindex, maxXindex, false); // lower hull
+        quickHull(graph, nodes, start, goal, true); // upper hull
+        quickHull(graph, nodes, start, goal, false); // lower hull
 
         graph.getMinPath(start, goal);
     }

@@ -1,0 +1,11 @@
+1
+The shortest distance is 167.11088
+The shortest path is:(4,99)-->(31,115)-->(34,116)-->(91,119)-->(112,102)-->(130,57)
+
+2
+The shortest distance is 150.06912
+The shortest path is:(8,58)-->(39,21)-->(107,26)-->(124,55)
+
+3
+The shortest distance is 157.49018
+The shortest path is:(8,84)-->(23,118)-->(26,119)-->(119,119)-->(141,109)
