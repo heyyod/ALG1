@@ -72,31 +72,33 @@ class nodeComparator implements Comparator<node> {
 }
 
 class Graph {
-    Map<node, List<node>> graph = new HashMap<node, List<node>>();
+    Map<node, List<node>> adjList = new HashMap<node, List<node>>();
 
-    void addAndConnect(node a, node b) {
-        if (!graph.containsKey(a))
-            graph.put(a, new LinkedList<node>());
+    void addVertex(node n) {
+        adjList.put(n, new LinkedList<node>());
+    }
 
-        if (!graph.containsKey(b))
-            graph.put(b, new LinkedList<node>());
+    void addEdge(node a, node b) {
+        adjList.get(a).add(b);
+        adjList.get(b).add(a);
+    }
 
-        graph.get(a).add(b);
-        graph.get(b).add(a);
+    Set<node> vertices() {
+        return adjList.keySet();
     }
 
     void getMinPath(node start, node goal) {
         Set<node> checkedNodes = new HashSet<node>();
-        PriorityQueue<node> pq = new PriorityQueue<node>(graph.size(), new nodeComparator());
+        PriorityQueue<node> pq = new PriorityQueue<node>(adjList.size(), new nodeComparator());
 
         start.dist = 0.0f;
         pq.add(start);
 
-        while (checkedNodes.size() < graph.size()) {
+        while (checkedNodes.size() < adjList.size()) {
             node minDistNode = pq.remove();
             checkedNodes.add(minDistNode);
 
-            for (node neighbour : graph.get(minDistNode)) {
+            for (node neighbour : adjList.get(minDistNode)) {
                 if (!checkedNodes.contains(neighbour)) {
                     double newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
 
@@ -148,11 +150,11 @@ public class Mines {
         return d;
     }
 
-    static void quickHull(Graph graph, Set<node> nodes, node l, node r, boolean checkUpperSide) {
+    static void quickHull(Graph graph, node l, node r, boolean checkUpperSide) {
         node maxDistNode = null;
         long maxDist = 0;
 
-        for (node n : nodes) {
+        for (node n : graph.vertices()) {
             long dist = distanceFromLineSegment(l, r, n);
             // check if it's on the desired side
             if ((dist > 0) == checkUpperSide && dist != 0) {
@@ -168,15 +170,13 @@ public class Mines {
         if (maxDistNode == null) {
             // no new point found to add in the hull
             // add the two nodes to the graph
-            nodes.remove(l);
-            nodes.remove(r);
-            graph.addAndConnect(l, r);
+            graph.addEdge(l, r);
             return;
         }
 
         // Apply quickHull to the two new lines
-        quickHull(graph, nodes, l, maxDistNode, checkUpperSide);
-        quickHull(graph, nodes, maxDistNode, r, checkUpperSide);
+        quickHull(graph, l, maxDistNode, checkUpperSide);
+        quickHull(graph, maxDistNode, r, checkUpperSide);
     }
 
     public static void main(String[] args) {
@@ -196,11 +196,11 @@ public class Mines {
         node start = new node(fileScanner.nextLine());
         node goal = new node(fileScanner.nextLine());
         
-        Set<node> nodes = new HashSet<node>();
-        nodes.add(start);
-        nodes.add(goal);
+        Graph graph = new Graph();
+        graph.addVertex(start);
+        graph.addVertex(goal);
         while (fileScanner.hasNextLine()) {
-            nodes.add(new node(fileScanner.nextLine()));
+            graph.addVertex(new node(fileScanner.nextLine()));
         }
         fileScanner.close();
         
@@ -209,9 +209,8 @@ public class Mines {
         // a scalene triangle is always less than the sum of the two smaller
         // sides. So we only need to consider the connection of our start and
         // goal to the uppest and downest mines ONLY.
-        Graph graph = new Graph(); // add the
-        quickHull(graph, nodes, start, goal, true); // upper hull
-        quickHull(graph, nodes, start, goal, false); // lower hull
+        quickHull(graph, start, goal, true); // upper hull
+        quickHull(graph, start, goal, false); // lower hull
 
         graph.getMinPath(start, goal);
     }
