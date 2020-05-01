@@ -1,3 +1,14 @@
+// Onoma:       Konstantinos
+// Epitheto:    Damaskinos
+// AEM:         3414
+// email:       kdamaskin@csd.auth.gr
+// Project:     Algorithms Project A
+
+// Sources Used:
+// Quick Hull:  https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
+// Graph:       https://www.geeksforgeeks.org/implementing-generic-graph-in-java/ 
+// Dijkstra:    https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-in-java-using-priorityqueue/
+
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.Comparator;
@@ -12,16 +23,6 @@ import java.util.Set;
 import java.util.Stack;
 import java.lang.Math;
 
-// Onoma:       Konstantinos
-// Epitheto:    Damaskinos
-// AEM:         3414
-// email:       kdamaskin@csd.auth.gr
-
-// Sources Used:
-// Quick Hull:  https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
-// Graph:       https://www.geeksforgeeks.org/implementing-generic-graph-in-java/ 
-// Dijkstra:    https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-in-java-using-priorityqueue/
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //                       Code
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,7 +35,7 @@ class node {
         String[] coord = line.split(" ");
         x = Integer.parseInt(coord[0]);
         y = Integer.parseInt(coord[1]);
-        dist = Float.POSITIVE_INFINITY;
+        dist = Double.POSITIVE_INFINITY;
         prev = null;
     }
 
@@ -138,29 +139,30 @@ class Graph {
 
 public class Mines {
 
-    static boolean isAbove(node l, node r, node test) {
-        int result = (test.y - l.y) * (r.x - l.x) - (r.y - l.y) * (test.x - l.x);
-        if (result > 0)
-            return true;
-        else
-            return false;
-    }
-
-    static int distance(node l, node r, node test) {
-        int d = (test.y - l.y) * (r.x - l.x) - (r.y - l.y) * (test.x - l.x);
-        return Math.abs(d);
+    // returns a value proportional to the distance 
+    // between the point p and the line joining the 
+    // points p1 and p2 
+    // positive if above the line, negative if below
+    static long distanceFromLineSegment(node l, node r, node test) {
+        long d = (test.y - l.y) * (r.x - l.x) - (r.y - l.y) * (test.x - l.x);
+        return d;
     }
 
     static void quickHull(Graph graph, Set<node> nodes, node l, node r, boolean checkUpperSide) {
         node maxDistNode = null;
-        int maxDist = 0;
+        long maxDist = 0;
 
         for (node n : nodes) {
-            int distance = distance(l, r, n);
-            if (isAbove(l, r, n) == checkUpperSide && distance > maxDist) {
-                maxDistNode = n;
-                maxDist = distance;
-            }
+            long dist = distanceFromLineSegment(l, r, n);
+            // check if it's on the desired side
+            if ((dist > 0) == checkUpperSide && dist != 0) {
+                // check if it's the furthest point from the line
+                dist = dist > 0 ? dist : -dist;
+                if( dist > maxDist) {
+                    maxDistNode = n;
+                    maxDist = dist;
+                }
+            } 
         }
 
         if (maxDistNode == null) {
