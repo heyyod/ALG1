@@ -27,6 +27,8 @@ import java.lang.Math;
 //                       Code
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// This class represents a point in our problem.
+// Either the start or goal, or a mine.
 class node {
     public node(String line) {
         if (line == "")
@@ -44,15 +46,6 @@ class node {
     double dist; // shortest distance from start
     node prev;
 
-    void setPos(String line) {
-        if (line == "")
-            return;
-
-        String[] coordinate = line.split(" ");
-        x = Integer.parseInt(coordinate[0]);
-        y = Integer.parseInt(coordinate[1]);
-    }
-
     double distanceFrom(node n) {
         double distSqrd = (n.x - this.x) * (n.x - this.x) + (n.y - this.y) * (n.y - this.y);
         double result = Math.sqrt(distSqrd);
@@ -60,6 +53,7 @@ class node {
     }
 }
 
+// Comparator for the priority queue we use to find the min path
 class nodeComparator implements Comparator<node> {
     public int compare(node a, node b) {
         if (a.dist < b.dist)
@@ -103,34 +97,34 @@ class Graph {
                 minDistNode = pq.remove();
             else
                 break;
-            checkedNodes.add(minDistNode);
 
+            checkedNodes.add(minDistNode);
             for (node neighbour : adjList.get(minDistNode)) {
                 if (!checkedNodes.contains(neighbour)) {
                     double newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
 
                     if (newDist < neighbour.dist) {
-                        // TODO: Stop if distance is greater than min goal dist.
+                        // found a better path for this node
                         neighbour.dist = newDist;
                         neighbour.prev = minDistNode;
                     }
 
-                    if (neighbour.x == goal.x && neighbour.y == goal.y) {
-                        if(neighbour.dist < minDistToGoal) {
-                            minDistToGoal = neighbour.dist;
-                            goalPrev = neighbour.prev;
-                        }
-                        else {
-                            // We need to change these values back to the min values
-                            goal.dist = minDistToGoal;
-                            goal.prev = goalPrev;
-                        }
+                    if (neighbour.x == goal.x && neighbour.y == goal.y 
+                        && neighbour.dist < minDistToGoal) {
+                        // if this node is the goal, save the previous node
+                        // and the distance
+                        minDistToGoal = neighbour.dist;
+                        goalPrev = neighbour.prev;
                     }
 
                     pq.add(neighbour);
                 }
             }
         }
+
+        // set goal dist and prev node to the minimum path
+        goal.dist = minDistToGoal;
+        goal.prev = goalPrev;
         printMinPath(goal);
     }
 
@@ -163,7 +157,6 @@ class Graph {
 }
 
 public class Mines {
-
     // returns a value proportional to the distance 
     // between the point p and the line joining the 
     // points p1 and p2 
@@ -173,15 +166,19 @@ public class Mines {
         return d;
     }
 
+    static boolean isOnDesiredSide(long dist, boolean side) {
+        return ((-dist > 0) == side);
+    }
+
     static void quickHull(Graph graph, node l, node r, boolean checkUpperSide) {
         node maxDistNode = null;
         long maxDist = 0;
 
+        // Look for further point from the line segment
         for (node n : graph.vertices()) {
             long dist = distanceFromLineSegment(l, r, n);
             // check if it's on the desired side
-            if ((dist != 0) && (-dist > 0) == checkUpperSide) {
-                // check if it's the furthest point from the line
+            if ((dist != 0) && isOnDesiredSide(dist, checkUpperSide)) {
                 dist = dist >= 0 ? dist : -dist;
                 if( dist >= maxDist) {
                     maxDistNode = n;
@@ -191,8 +188,8 @@ public class Mines {
         }
 
         if (maxDistNode == null) {
-            // no new point found to add in the hull
-            // add the two nodes to the graph
+            // no new point found to add in the convex hull
+            // we connect the two nodes
             graph.addEdge(l, r);
             return;
         }
@@ -215,11 +212,10 @@ public class Mines {
         }
         Scanner fileScanner = new Scanner(fr);
 
-        // Read data
+        // Read data into the graph
+        Graph graph = new Graph();
         node start = new node(fileScanner.nextLine());
         node goal = new node(fileScanner.nextLine());
-        
-        Graph graph = new Graph();
         graph.addVertex(start);
         graph.addVertex(goal);
         while (fileScanner.hasNextLine()) {
