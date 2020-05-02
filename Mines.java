@@ -90,12 +90,19 @@ class Graph {
     void getMinPath(node start, node goal) {
         Set<node> checkedNodes = new HashSet<node>();
         PriorityQueue<node> pq = new PriorityQueue<node>(adjList.size(), new nodeComparator());
+        
+        double minDistToGoal = Double.POSITIVE_INFINITY;
+        node goalPrev = null;
 
         start.dist = 0.0f;
         pq.add(start);
 
         while (checkedNodes.size() < adjList.size()) {
-            node minDistNode = pq.remove();
+            node minDistNode = null;
+            if(!pq.isEmpty())
+                minDistNode = pq.remove();
+            else
+                break;
             checkedNodes.add(minDistNode);
 
             for (node neighbour : adjList.get(minDistNode)) {
@@ -103,24 +110,40 @@ class Graph {
                     double newDist = minDistNode.dist + neighbour.distanceFrom(minDistNode);
 
                     if (newDist < neighbour.dist) {
+                        // TODO: Stop if distance is greater than min goal dist.
                         neighbour.dist = newDist;
                         neighbour.prev = minDistNode;
                     }
 
                     if (neighbour.x == goal.x && neighbour.y == goal.y) {
-                        printMinPath(goal);
-                        return;
+                        if(neighbour.dist < minDistToGoal) {
+                            minDistToGoal = neighbour.dist;
+                            goalPrev = neighbour.prev;
+                        }
+                        else {
+                            // We need to change these values back to the min values
+                            goal.dist = minDistToGoal;
+                            goal.prev = goalPrev;
+                        }
                     }
 
                     pq.add(neighbour);
                 }
             }
         }
+        printMinPath(goal);
     }
 
     void printMinPath(node goal) {
-        System.out.printf("The shortest distance is %.5f\n", goal.dist);
+        // Remove trailing zeros
+        String dist = String.format("%.5f", goal.dist);
+        while(dist.endsWith("0")) {
+            dist = dist.substring(0, dist.length() - 1);
+        }
+        System.out.printf("The shortest distance is %s\n", dist);
 
+        // We add the nodes to a stack since we only know the path
+        // from the goal to the start
         Stack<node> path = new Stack<node>();
         node n = goal;
         while(n != null) {
@@ -157,10 +180,10 @@ public class Mines {
         for (node n : graph.vertices()) {
             long dist = distanceFromLineSegment(l, r, n);
             // check if it's on the desired side
-            if ((dist > 0) == checkUpperSide && dist != 0) {
+            if ((dist != 0) && (-dist > 0) == checkUpperSide) {
                 // check if it's the furthest point from the line
-                dist = dist > 0 ? dist : -dist;
-                if( dist > maxDist) {
+                dist = dist >= 0 ? dist : -dist;
+                if( dist >= maxDist) {
                     maxDistNode = n;
                     maxDist = dist;
                 }
@@ -203,7 +226,7 @@ public class Mines {
             graph.addVertex(new node(fileScanner.nextLine()));
         }
         fileScanner.close();
-        
+
         // We need to find the quickhull of all our points including the
         // starting and goal point. This is because the greatest side of
         // a scalene triangle is always less than the sum of the two smaller
